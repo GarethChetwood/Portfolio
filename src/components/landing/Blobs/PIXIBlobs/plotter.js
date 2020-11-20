@@ -52,7 +52,7 @@ class CWCircle {
     // this.enterDelay = initializeDelay + 125 + yBeyondBatch * 0.65 + 0.15 * yBeyondBatch * randnBm();
     this.enterDelay =
       initializeDelay + 125 + (yBeyondBatch ** 2 / batchLength) * (1.4 + 0.1 * randnBm()) * (0.75 + 0.1 * randnBm());
-    this.enterDuration = 1200 + ((yBeyondBatch * 1.5) / batchLength) * (0.05 + 0.05 * randnBm()); // - Math.min(yBeyondBatch / 2, 500);
+    this.enterDuration = 650 * (0.5 + randnBm()) + ((yBeyondBatch * 1.5) / batchLength) * (0.01 + 0.05 * randnBm()); // - Math.min(yBeyondBatch / 2, 500);
 
     this.batchNum = batchNum;
   }
@@ -122,7 +122,7 @@ const makeCWGrid = (n, gridLength, center, angle, streamWidth, streamRes, stream
   // Plot 'main stream' curve
   const xMax = compactMode ? streamWidth * 0.5 : streamWidth; // distance (x-axis) outside of which a circle is invariably discarded
   const streamCurve = new Array(streamRes).fill(1).map((_, i) => {
-    const y = center.y - gridLength * 0.48 + (i * gridLength * 0.9) / (streamRes - 1);
+    const y = center.y - gridLength * 0.49 + (i * gridLength) / (streamRes - 1);
     const curveAngle = (y * 16) / (gridLength * 0.8); // this is the 'angle' used by the sin/cos functions, not visual angle
     const offsetFactor = -(-(Math.cos(curveAngle) ** 2) + Math.sin(curveAngle));
     const xOffset = -(compactMode ? streamWidth * 0.25 : xMax) * 0.3 * offsetFactor;
@@ -164,7 +164,33 @@ const makeCWGrid = (n, gridLength, center, angle, streamWidth, streamRes, stream
   return blobs;
 };
 
-export default (spacing, width, height, streamWidth, center, angle, timelineItems, batchLength, compactMode) => {
+// Findds the nearest batch crossover point and returns the distance in pixels
+const getBatchPointDist = (batchPoints, yPos) => {
+  const batchPoint = batchPoints.reduce(
+    (bpClosest, bpCurrent) => (Math.abs(bpCurrent - yPos) < Math.abs(bpClosest - yPos) ? bpCurrent : bpClosest),
+    0
+  );
+  return Math.abs(batchPoint - yPos);
+};
+
+const getBatchNum = (batchPoints, yPos) => {
+  const index = batchPoints.findIndex(batchPointPos => Math.abs(batchPointPos) > Math.abs(yPos));
+  return Math.max(index === -1 ? batchPoints.length - 1 : index - 1, 0);
+};
+
+export default (
+  spacing,
+  width,
+  height,
+  streamWidth,
+  center,
+  angle,
+  timelineItems,
+  timelineItemSpan,
+  batchPoints,
+  batchLength,
+  compactMode
+) => {
   // The grid must be a square because when it rotates it needs to have enough points
   const gridLength = width >= height ? width : height;
   const n = Math.round(gridLength / spacing);
@@ -172,59 +198,97 @@ export default (spacing, width, height, streamWidth, center, angle, timelineItem
   const streamRes = Math.round((height * 10) / batchLength); // how many points make up 'main stream' line -- "resolution"
   const streamJuristiction = height / streamRes; // distance (y-axis) within which a grid point is classed as 'belonging to' a stream point
 
-  // const streamWidth = width * 0.35;
   let points = makeCWGrid(n, gridLength, center, angle, streamWidth, streamRes, streamJuristiction, compactMode);
 
   // Breakpoints are used for producing timeline points periodically
-  let currentBreakPoint = 0;
-  const breakPointDiff = (height * 0.9) / timelineItems;
-  const breakPoints = new Array(timelineItems + 1)
+  let currentBreakPoint = -1;
+  const breakPointDiff = timelineItemSpan; // allow for 2 extra points just in case
+  const breakPoints = new Array(timelineItems + 2)
     .fill(1)
     .map((_, i) => ({ x: center.x, y: center.y - height * 0.5 + i * breakPointDiff - breakPointDiff * 0.8 })) // Start at center, move back up to top, add on current index's breakpoint amount, reduce half a break point to shift all timeline points
     .slice(1);
+  // const batchPoints = new Array(Math.round(height / batchLength) + 1).fill(0).map((_, i) => i * batchLength);
   const timelinePoints = [];
   let isLeft = true; // start on the left side, alternate
-  // console.log(breakPoints);
+  console.log('break points:', breakPoints);
+  console.log('Diff:', breakPointDiff);
 
   // Prepare instances of the Circle class
   // First ones are rendered first (although there is some randomness) so have shortest delay
   // Randomize radius
   points = points.map(point => {
     let isTimelinePoint = false;
-    const batchNum = Math.floor((point.y - (point.y % batchLength)) / batchLength);
-    const yBeyondBatch = point.y % batchLength;
-    // Do timeline point
-    if (point.y > 0 && point.y < height) {
-      const nextBreakPos = currentBreakPoint + 1 > breakPoints.length ? height : breakPoints[currentBreakPoint].y;
+    const nextBreakPoint = currentBreakPoint >= breakPoints.length - 1 ? breakPoints.length - 1 : currentBreakPoint + 1;
+    // console.log('Current break point:', nextBreakPoint);
+    const nextBreakPos = breakPoints[nextBreakPoint].y;
+    const yPos = point.y;
+
+    const batchNum = getBatchNum(batchPoints, yPos);
+    const nextPosBatchNum = getBatchNum(batchPoints, nextBreakPos);
+    const yBeyondBatch = yPos % batchLength;
+    const batchPointDist = getBatchPointDist(batchPoints, yPos);
+    const farFromEdge = batchPointDist > batchLength * (compactMode ? 0.05 : 0.2);
+    const prevPoint = timelinePoints.length > 0 ? timelinePoints.slice(-1)[0].y : 0;
+    const farFromLastPoint = prevPoint === 0 || Math.abs(yPos - prevPoint) > Math.abs(breakPointDiff * 0.5);
+
+    const nearestBatchPt = batchPoints.reduce(
+      (bpClosest, bpCurrent) => (Math.abs(bpCurrent - yPos) < Math.abs(bpClosest - yPos) ? bpCurrent : bpClosest),
+      0
+    );
+    // console.log(
+    //   `${yPos > nextBreakPos}, ${farFromEdge} ${farFromLastPoint} ${timelinePoints.length - 1 < timelineItems}`
+    // );
+    // console.log(
+    //   ` point: ${yPos}, nextBreak: ${nextBreakPos} prevTimeline: ${prevPoint}, progress: ${yPos -
+    //     prevPoint} nearest: ${nearestBatchPt} diff: ${batchPointDist}, threshold: ${batchLength *
+    //     0.15}, Batch: ${batchNum}, NextBatch: ${nextPosBatchNum}`
+    // );
+
+    /** **************************
+     ** Do timeline points
+     */
+    if (timelinePoints.length < timelineItems && yPos > nextBreakPos && farFromEdge && farFromLastPoint) {
       const { juristicialPoint } = point;
 
-      if (point.y > nextBreakPos) {
-        let goToNext = true;
-        if (compactMode) {
-          goToNext = true;
-        } else if (!isLeft) {
-          goToNext = compactMode || point.x > juristicialPoint.x + streamWidth * 0.05;
-        } else {
-          goToNext = point.x < juristicialPoint.x - streamWidth * 0.05;
-        }
-        if (goToNext) {
+      let goToNext = false;
+
+      if (compactMode) {
+        if (batchNum > nextPosBatchNum) {
           currentBreakPoint += 1;
-          if (compactMode) {
-            timelinePoints.push({
-              x: center.x,
-              y: nextBreakPos - breakPointDiff * 0.25,
-              isLeft: false,
-              batchNum,
-              yBeyondBatch,
-            });
-          } else {
-            isTimelinePoint = true; // only make timeline points visible if not in compact mode!
-            timelinePoints.push({ ...point, isLeft, batchNum, yBeyondBatch });
-            isLeft = !isLeft;
-          }
+        } else {
+          goToNext = true;
+        }
+      } else if (!isLeft) {
+        goToNext = compactMode || point.x > juristicialPoint.x + streamWidth * 0.05;
+      } else {
+        goToNext = point.x < juristicialPoint.x - streamWidth * 0.05;
+      }
+
+      if (goToNext) {
+        currentBreakPoint += 1;
+        // console.log(
+        //   `!!!!!!!!!!!!!! Using ${yPos} as timeline point. (${isLeft ? 'left' : 'right'}) Breakpoint: ${nextBreakPos}`
+        // );
+        if (compactMode) {
+          timelinePoints.push({
+            x: center.x,
+            y: nextBreakPos,
+            isLeft: false,
+            batchNum,
+            yBeyondBatch,
+          });
+        } else {
+          isTimelinePoint = true; // only make timeline points visible if not in compact mode!
+          timelinePoints.push({ ...point, isLeft, batchNum, yBeyondBatch });
+
+          isLeft = !isLeft;
         }
       }
     }
+
+    /* **************************
+     ** Do circle properties
+     */
     const color = isTimelinePoint ? CHETWOOD_MAIN : getRandomColour();
     const radiusFactor = Math.min((randnBm() * 0.9 + 0.1) ** 1.56 * (1.85 - 1.45 * point.outlierFactor ** 1.5), 1);
 

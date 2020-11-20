@@ -31,8 +31,8 @@ const StageControlButton = ({ hide, scale, clickCallback, ...props }) => {
 
   return (
     <DownArrowSprite
-      interactive={!hide}
-      buttonMode={!hide}
+      interactive={!hide && alpha > 0.5}
+      buttonMode={!hide && alpha > 0.5}
       scale={scale}
       alpha={hide ? 0 : alpha}
       pointerdown={() => handleClick(true)}
@@ -71,7 +71,7 @@ const CWStageController = ({
   const [enteredProgress] = useEnterAnimation({
     ticker: app.ticker,
     enterTime: startTime,
-    enterDelay: 7000,
+    enterDelay: 3000,
     enterDuration: 1500,
   });
 
@@ -87,10 +87,8 @@ const CWStageController = ({
   const downClicked = useCallback(
     downUp => {
       if (downUp) {
-        console.log('moving to lower viewpoint...');
         if (stageYTo !== viewpoints.slice(-1)[0]) setStageYTo(viewpoints[viewingBatch + 1]);
       } else if (stageYTo !== viewpoints[0]) setStageYTo(viewpoints[viewingBatch - 1]);
-      console.log('Down clicked?', downUp);
       selectBatchCallback(downUp);
     },
     [selectBatchCallback, stageYTo, viewingBatch, viewpoints]

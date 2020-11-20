@@ -13,12 +13,14 @@ const blobAlign = getResponsiveValue(window.innerWidth, ScreenSizeMode, 'blobAli
 
 const compactMode = blobAlign === BlobAlign.COMPACT;
 
-const GlobalScale = compactMode ? 0.8 : 0.25 + 0.75 * Math.min(window.innerWidth / 2560, 1); // getResponsiveValue(window.innerWidth, ScreenSizeMode, 'globalScale');
+const GlobalScale = compactMode
+  ? Math.min((window.innerWidth / 400) * 0.75, 1)
+  : 0.25 + 0.75 * Math.min(window.innerWidth / 2560, 1); // getResponsiveValue(window.innerWidth, ScreenSizeMode, 'globalScale');
 console.log('Got global scale!', GlobalScale);
 
-const VIEW_APP_PORTION = compactMode ? 1 : 0.8; // Height of app view vs total viewport
+const VIEW_APP_PORTION = compactMode ? 1 : 0.8; // Height of app view vs total browser viewport
 const MAX_VIEW_HEIGHT = VIEW_APP_PORTION * window.innerHeight;
-const BATCH_VIEW_PORTION = 0.85; // height of a batch of blobs vs total view height;
+const BATCH_VIEW_PORTION = 0.75; // height of a batch of blobs vs total view height;
 
 /** **********************
  * Calculate Timeline
@@ -26,25 +28,19 @@ const BATCH_VIEW_PORTION = 0.85; // height of a batch of blobs vs total view hei
 const TIMELINE_ITEMS = timelineInfo.length;
 
 // NEED TO STRETCH TIMELINE TO FIT exact amount of PAGES SO WE DON'T HAVE AWKWARD FINAL PAGE WITH A FEW BLOBS
-const TIMELINE_GAP_MIN = 300; // distance in pixels between each timeline point
-const TIMELINE_LENGTH_MIN = TIMELINE_GAP_MIN * TIMELINE_ITEMS; // extend timeline slightly to leave a 'future'
-const BLOB_BATCH_LENGTH_MIN = Math.min(window.innerHeight * BATCH_VIEW_PORTION, TIMELINE_LENGTH_MIN);
+const TIMELINE_ITEM_SPAN_MIN = compactMode ? 200 : 350; // distance in pixels between each timeline point
+const TIMELINE_LENGTH_MIN = TIMELINE_ITEM_SPAN_MIN * TIMELINE_ITEMS; // extend timeline slightly to leave a 'future'
+const BLOB_BATCH_LENGTH_MIN = Math.min(window.innerHeight * VIEW_APP_PORTION * BATCH_VIEW_PORTION, TIMELINE_LENGTH_MIN);
 
 const BLOB_BATCHES_PRECISE = TIMELINE_LENGTH_MIN / BLOB_BATCH_LENGTH_MIN;
-const BLOB_BATCHES_MIN = Math.ceil(BLOB_BATCHES_PRECISE); // need to go to next page up
-const TIMELINE_GAP =
-  TIMELINE_GAP_MIN + (BLOB_BATCH_LENGTH_MIN * (1 + BLOB_BATCHES_MIN - BLOB_BATCHES_PRECISE)) / TIMELINE_ITEMS;
+const BLOB_BATCHES_MIN = Math.ceil(BLOB_BATCHES_PRECISE);
+const TIMELINE_ITEM_SPAN =
+  TIMELINE_ITEM_SPAN_MIN + (BLOB_BATCH_LENGTH_MIN * (1 + BLOB_BATCHES_MIN - BLOB_BATCHES_PRECISE)) / TIMELINE_ITEMS; // Shrink this if necessary to give some extra space at the bottom for 'future'
 
-const TIMELINE_LENGTH = TIMELINE_GAP * TIMELINE_ITEMS;
+const TIMELINE_LENGTH = TIMELINE_ITEM_SPAN * TIMELINE_ITEMS;
 const VIEW_LENGTH = Math.min(MAX_VIEW_HEIGHT, TIMELINE_LENGTH / BATCH_VIEW_PORTION);
-const BLOB_BATCHES = Math.round(TIMELINE_LENGTH / VIEW_LENGTH);
 
-// console.log(`${BLOB_BATCHES} blob batches of length ${BLOB_BATCH_LENGTH}! Viewpoints: ${BATCH_VIEWPOINTS}`);
-// console.log(
-//   `${TIMELINE_GAP} timeline gap ${TIMELINE_ITEMS}! ${BLOB_BATCHES_PRECISE} precise, ${BLOB_BATCH_LENGTH_MIN} length min`
-// );
-console.log('View height', VIEW_LENGTH);
-
+// At this point we can calulate the dimensions of the app and viewport
 const APP_DIMENSIONS = {
   width: compactMode ? window.innerWidth : Math.min(window.innerWidth * 0.9, 2048),
   height: TIMELINE_LENGTH,
@@ -75,15 +71,22 @@ const STAGE_OPTIONS = {
   // resolution: 2,
 };
 
+// Now we can finalise blob batches
+const BLOB_BATCH_LENGTH = (VIEW_LENGTH * BATCH_VIEW_PORTION) / GlobalScale;
+const BLOB_BATCHES = Math.round(TIMELINE_LENGTH / BLOB_BATCH_LENGTH);
+
+const BATCH_POINTS = new Array(BLOB_BATCHES).fill(0).map((_, i) => i * BLOB_BATCH_LENGTH);
+
+const BATCH_VIEWPOINTS_RAW = BATCH_POINTS.map(batchpoint => -batchpoint);
+
+const BATCH_VIEWPOINTS = BATCH_VIEWPOINTS_RAW.map(viewpoint => viewpoint * GlobalScale);
+
+console.log('BATCH_POINTS', BATCH_POINTS);
+console.log(`${BLOB_BATCHES} blob batches of length ${BLOB_BATCH_LENGTH}! Viewpoints: ${BATCH_VIEWPOINTS}`);
+
 const BLOBSTREAM_WIDTH = compactMode
   ? APP_DIMENSIONS.width * 1.25
   : Math.min(Math.max(APP_DIMENSIONS.width * 0.15, 300), 500);
-
-const BLOB_BATCH_LENGTH = (VIEW_LENGTH * BATCH_VIEW_PORTION) / GlobalScale;
-
-const BATCH_VIEWPOINTS = new Array(BLOB_BATCHES)
-  .fill(0, 0, BLOB_BATCHES)
-  .map((_, i) => i * -BLOB_BATCH_LENGTH * GlobalScale);
 
 // May need this because firefox doesn't antialias unless there's a rectangle behind
 const BG_PROPS = {
@@ -104,6 +107,8 @@ const blobPointInfo = CACHED
       APP_CENTER,
       45,
       TIMELINE_ITEMS,
+      TIMELINE_ITEM_SPAN,
+      BATCH_POINTS,
       BLOB_BATCH_LENGTH,
       compactMode
     );
@@ -125,7 +130,7 @@ const scaledContainerProperties = {
   pivot: { x: APP_DIMENSIONS.width / 2, y: APP_DIMENSIONS.height / 2 },
   position: {
     x: APP_DIMENSIONS.width * 0.5, // * GlobalScale,
-    y: GlobalScale * (APP_DIMENSIONS.height * 0.535),
+    y: GlobalScale * (APP_DIMENSIONS.height * 0.5) + (VIEW_LENGTH * (1 - BATCH_VIEW_PORTION) * 0.2) / GlobalScale,
   },
 };
 
@@ -146,7 +151,7 @@ const Blobs = () => {
             inline: 'center',
           });
           if (viewingBatch === startTimes.length - 1) {
-            setStartTimes([...startTimes, new Date().getTime()]);
+            setStartTimes(st => [...st, new Date().getTime()]);
           }
         }
       } else if (viewingBatch > 0) {
@@ -174,6 +179,7 @@ const Blobs = () => {
       </ParticleContainer>
       <Container {...scaledContainerProperties}>
         {timelineBoxes({
+          viewPoints: BATCH_VIEWPOINTS_RAW,
           stageWidth: STAGE_DIMENSIONS.width,
           stageHeight: STAGE_DIMENSIONS.height,
           timelinePointsInfo: blobPointInfo.timelinePoints,

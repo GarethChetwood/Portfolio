@@ -1,6 +1,7 @@
 import React from 'react';
 import pick from 'lodash/pick';
 import TimelineBox from './TimelineBox';
+import DottedLine from '../DottedLine';
 
 import CoffeeCup from './Images/CoffeeCup.png';
 import HighStreet from './Images/HighStreet.png';
@@ -104,8 +105,18 @@ export const timelineInfo = [
 // Make a point
 const p = (x, y) => ({ x, y });
 
-const TimelineBoxes = ({ timelinePointsInfo, startTimes, compactMode }) => (
+const TimelineBoxes = ({ viewPoints, timelinePointsInfo, startTimes, compactMode }) => (
   <>
+    {/* {viewPoints.map((viewPoint, i) => (
+      <DottedLine
+        key={i}
+        startPoint={{ x: -window.innerWidth, y: -viewPoint }}
+        endPoint={{ x: window.innerWidth * 2, y: -viewPoint }}
+        dash={6}
+        color={0xffffff}
+        zOrder={-3}
+      />
+    ))} */}
     {timelinePointsInfo.map((pointInfo, i) => {
       if (!timelineInfo[i]) return null;
       const info = { ...pointInfo, ...timelineInfo[i] };
@@ -121,7 +132,7 @@ const TimelineBoxes = ({ timelinePointsInfo, startTimes, compactMode }) => (
 
       const offsetTimelinePosition = p(info.x + TIMELINE_POINT_OFFSET * (info.isLeft ? -1 : 1), info.y);
 
-      const compactPosition = p(info.x - BOX_WIDTH * 0.5, info.y - boxHeight * 0.5);
+      const compactPosition = p(info.x - BOX_WIDTH * 0.5, info.y);
 
       return (
         <TimelineBox

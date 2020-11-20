@@ -21,6 +21,7 @@ const useEnterAnimation = ({
         setEnteredProg(lifeFactor);
       } else {
         if (debug) console.log('hasEntered!', lifeFactor);
+        setEnteredProg(1);
         setHasEntered(true);
         ticker.remove(updateAnimation);
       }

@@ -23,7 +23,6 @@ export const getBreakPoint = width => {
     (modeKey, _, bpKey) => modeKey + (width > BreakpointValues[bpKey] ? 1 : 0),
     0
   );
-  console.log('Width: ', width, 'Index? ', ScreenModeIndex);
   return ScreenModes[ScreenModeIndex];
 };
 

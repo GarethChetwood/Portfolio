@@ -58,7 +58,7 @@ const TimelineBox = ({
     ticker: app.ticker,
     canEnter: !!startTime,
     enterTime: startTime,
-    enterDelay: 3500 + yBeyondBatch,
+    enterDelay: 2000 + yBeyondBatch,
     enterDuration: 1000,
   });
 

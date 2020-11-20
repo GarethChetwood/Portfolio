@@ -6,7 +6,7 @@ import Particle from './Particle';
 
 import CircleImg from './circle-32.png';
 
-const ease = BezierEasing(0.1, 1.6, 0.36, 1.25);
+const ease = BezierEasing(0.25, 1.4, 0.4, 1.3);
 // const ease = BezierEasing(0.07, 1.8, 0.79, 0.91);
 
 const circle = PIXI.Texture.from(CircleImg);
