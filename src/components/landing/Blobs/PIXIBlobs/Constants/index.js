@@ -54,6 +54,7 @@ const ResponsiveValues = windowWidth => ({
   },
   [ModeValues.SMALL]: {
     ...BASE_VALUES,
+    blobAlign: BlobAlign.LEFT,
     globalScale: 0.4,
   },
   [ModeValues.MEDIUM]: {
