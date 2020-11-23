@@ -18,7 +18,9 @@ export default CustomPIXIComponent(
       instance.clear();
       instance.lineStyle(thickness, color);
       const currentPosition = startPoint;
-      instance.moveTo(currentPosition.x, currentPosition.y);
+
+      let lineStart = { ...currentPosition };
+      const lines = [];
 
       while (!xCondition() || !yCondition()) {
         // Check if x and y still need to continue, draw line if so
@@ -36,7 +38,8 @@ export default CustomPIXIComponent(
           currentPosition.y += dashLen * (yDir ? 1 : -1);
         }
 
-        instance.lineTo(currentPosition.x, currentPosition.y);
+        // instance.lineTo(currentPosition.x, currentPosition.y);
+        lines.push([{ ...lineStart }, { ...currentPosition }]);
 
         // Check if x and y need to continue, if so: move across gap , if not: set currentPosition to end
         if (!xCondition()) {
@@ -51,7 +54,20 @@ export default CustomPIXIComponent(
           currentPosition.y = endPoint.y;
         }
 
-        instance.moveTo(currentPosition.x, currentPosition.y);
+        // instance.moveTo(currentPosition.x, currentPosition.y);
+        lineStart = { ...currentPosition };
+      }
+
+      if (lines.length > 0) {
+        const lineDrawInterval = setInterval(() => {
+          const [start, end] = lines.shift();
+          instance.moveTo(start.x, start.y);
+          instance.lineTo(end.x, end.y);
+
+          if (lines.length <= 0) {
+            window.clearInterval(lineDrawInterval);
+          }
+        }, 100);
       }
     },
   },

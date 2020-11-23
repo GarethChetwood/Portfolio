@@ -1,7 +1,7 @@
 import React from 'react';
 import pick from 'lodash/pick';
 import TimelineBox from './TimelineBox';
-import DottedLine from '../DottedLine';
+import DottedLine from '../Graphics/DottedLine';
 
 import CoffeeCup from './Images/CoffeeCup.png';
 import HighStreet from './Images/HighStreet.png';

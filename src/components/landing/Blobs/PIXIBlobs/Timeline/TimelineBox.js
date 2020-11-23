@@ -3,8 +3,8 @@ import * as PIXI from 'pixi.js';
 import { TextStyle } from 'pixi.js';
 import { Container, withApp, Text, Sprite } from 'react-pixi-fiber';
 import BezierEasing from 'bezier-easing';
-import RoundedRectangle from '../RoundedRectangle';
-import DottedLine from '../DottedLine';
+import RoundedRectangle from '../Graphics/RoundedRectangle';
+import DottedParticleLine from '../Graphics/DottedParticleLine';
 
 import useEnterAnimation from '../../../../../hooks/useEnterAnimation';
 
@@ -92,10 +92,33 @@ const TimelineBox = ({
           text={text}
         />
       </Container>
-      {/*! compactMode &&  <Container cacheAsBitmap>
-        <DottedLine startPoint={timelinePoint} endPoint={cornerPoint} dash={6} color={0x646464} />
-        <DottedLine startPoint={cornerPoint} endPoint={joinPointPosition} dash={6} color={0x646464} />
-      </Container> */}
+      {!compactMode && (
+        <>
+          <DottedParticleLine
+            ticker={app.ticker}
+            startTime={startTime + yBeyondBatch + 3000}
+            enterDuration={500}
+            startX={timelinePoint.x}
+            startY={timelinePoint.y}
+            endX={cornerPoint.x}
+            endY={cornerPoint.y}
+            dashLen={6}
+            color={0x646464}
+          />
+          <DottedParticleLine
+            ticker={app.ticker}
+            startTime={startTime + yBeyondBatch + 3450}
+            enterDuration={175}
+            isVertical
+            startX={cornerPoint.x}
+            startY={cornerPoint.y}
+            endX={joinPointPosition.x}
+            endY={joinPointPosition.y}
+            dashLen={6}
+            color={0x646464}
+          />
+        </>
+      )}
     </>
   );
 };

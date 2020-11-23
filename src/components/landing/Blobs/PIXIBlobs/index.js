@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 
 import { Stage, ParticleContainer, Container } from 'react-pixi-fiber';
 import range from 'lodash/range';
-import CirclesController from './Circle';
+import CirclesController from './CircleController';
 import timelineBoxes, { timelineInfo } from './Timeline/timelineBoxes';
 import CWStageController from './CWStageController';
 import plotter from './plotter';

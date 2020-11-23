@@ -2,9 +2,9 @@ import React, { Component, useState, useEffect, useCallback, useRef } from 'reac
 import { withApp, ParticleContainer } from 'react-pixi-fiber';
 import * as PIXI from 'pixi.js';
 import BezierEasing from 'bezier-easing';
-import Particle from './Particle';
+import Particle from './Graphics/Particle';
 
-import CircleImg from './circle-32.png';
+import CircleImg from './Graphics/circle-32.png';
 
 const ease = BezierEasing(0.25, 1.4, 0.4, 1.3);
 // const ease = BezierEasing(0.07, 1.8, 0.79, 0.91);
